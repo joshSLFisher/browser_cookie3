@@ -263,14 +263,19 @@ class ChromiumBased:
         con = sqlite3.connect(self.tmp_cookie_file)
         con.text_factory = text_factory
         cur = con.cursor()
+        
+        if type(self.domain_name) == str:
+            where = f"host_key like \"%{self.domain_name}%\""
+        else: 
+            conditions = [f"host_key like \"%{d}%\"" for d in self.domain_name]
+            where = " OR ".join(conditions)
+        
         try:
             # chrome <=55
-            cur.execute('SELECT host_key, path, secure, expires_utc, name, value, encrypted_value '
-                        'FROM cookies WHERE host_key like "%{}%";'.format(self.domain_name))
+            cur.execute('SELECT host_key, path, secure, expires_utc, name, value, encrypted_value FROM cookies WHERE {};'.format(where))
         except sqlite3.OperationalError:
             # chrome >=56
-            cur.execute('SELECT host_key, path, is_secure, expires_utc, name, value, encrypted_value '
-                        'FROM cookies WHERE host_key like "%{}%";'.format(self.domain_name))
+            cur.execute('SELECT host_key, path, is_secure, expires_utc, name, value, encrypted_value FROM cookies WHERE {};'.format(where))
 
         cj = http.cookiejar.CookieJar()
         epoch_start = datetime.datetime(1601, 1, 1)
